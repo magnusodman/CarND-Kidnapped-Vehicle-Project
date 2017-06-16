@@ -112,8 +112,7 @@ void ParticleFilter::dataAssociation(std::vector<LandmarkObs> predicted, std::ve
 
 			if(observation_dist < closest) {
 				closest = observation_dist;
-				observation.id = landmark.id; //Is this right or maybe just create map
-				//observations[observationsIndex] = observation;
+				observation.id = landmark.id;
 			}
 
 		}
@@ -139,7 +138,6 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 	for(int index = 0; index < particles.size(); index++) {
 
 		Particle &p = particles[index];
-		//auto landmarks_in_range = landmarksInRange(p, sensor_range, map_landmarks);
 
 		std::vector<LandmarkObs> mappedObservations;
 		mappedObservations = mapObservationsToWorldCoordinates(observations, p);
@@ -228,11 +226,9 @@ double ParticleFilter::measurementProbability(LandmarkObs observation, Map map, 
 		auto landMark = map.landmark_list[mapLandmarkIndex];
 		if (landMark.id_i == observation.id) {
 			auto probability = gaussian(observation, landMark, stdLandmark);
-			//cout << "Found matching landmark for observation " << observation.id << "with prob: " << probability << endl;
 			return gaussian(observation, landMark, stdLandmark);
 		}
 	}
-	//cout << "No matching landmark for observation " << observation.id << endl;
 	return 0.0; //Should not come here?
 }
 
@@ -291,18 +287,6 @@ ParticleFilter::predictObservations(Map map, Particle &particle, unsigned long s
 		predicted.push_back(landmarkObs);
 	}
 
-	/*
-	Particle p = particle;
-	struct sorter
-	{
-			inline bool operator() (const LandmarkObs& landmarkObs1, const LandmarkObs& landmarkObs2)
-			{
-				return (dist(p.x, p.y, landmarkObs1.x, landmarkObs1.y) < dist(p.x, p.y, landmarkObs2.x, landmarkObs2.y));
-			}
-	};
-
-	sort(predicted.begin(), predicted.end(), sorter());
-	*/
 	sort( predicted.begin( ), predicted.end( ), [ particle]( const LandmarkObs& landmarkObs1, const LandmarkObs& landmarkObs2 )
 	{
 			return (dist(particle.x, particle.y, landmarkObs1.x, landmarkObs1.y) < dist(particle.x, particle.y, landmarkObs2.x, landmarkObs2.y));
