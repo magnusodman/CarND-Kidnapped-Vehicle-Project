@@ -28,7 +28,7 @@ struct Particle {
 class ParticleFilter {
 	
 	// Number of particles to draw
-	int num_particles; 
+	int num_particles;
 	
 	
 	
@@ -114,6 +114,22 @@ public:
 	const bool initialized() const {
 		return is_initialized;
 	}
+
+		double measurementProbability(LandmarkObs observation, Map map, double pDouble[]);
+
+		double gaussian(LandmarkObs distance, Map::single_landmark_s std_noise, double obs[]);
+
+		LandmarkObs mapToWorldCoordinates(LandmarkObs &obs, Particle &particle);
+
+		std::vector<LandmarkObs>
+    mapObservationsToWorldCoordinates(std::vector<LandmarkObs> vector, Particle particle);
+
+		std::vector<LandmarkObs, std::allocator<LandmarkObs>> landmarksInRange(Particle particle, double range, Map map);
+
+    std::vector<LandmarkObs, std::allocator<LandmarkObs>>
+    predictObservations(Map map, Particle &particle, unsigned long size);
+
+    int predictionCount;
 };
 
 
