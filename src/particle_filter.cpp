@@ -20,6 +20,85 @@
 
 using namespace std;
 
+double
+gaussian(LandmarkObs observation, Map::single_landmark_s landmark, double std_dev[]) {
+	double exponent1 = pow(observation.x-landmark.x_f, 2) / (2*std_dev[0]*std_dev[0]);
+	double exponent2 = pow(observation.y-landmark.y_f, 2) / (2*std_dev[1]*std_dev[1]);
+	return exp(-(exponent1 + exponent2)) / (2 * M_PI * std_dev[0] * std_dev[1]);
+}
+
+double measurementProbability(LandmarkObs observation, Map map, double stdLandmark[]) {
+
+	double max_probability = 0.0;
+	for(int mapLandmarkIndex = 0; mapLandmarkIndex < map.landmark_list.size(); mapLandmarkIndex++) {
+		auto landMark = map.landmark_list[mapLandmarkIndex];
+		if (landMark.id_i == observation.id) {
+			auto probability = gaussian(observation, landMark, stdLandmark);
+			return gaussian(observation, landMark, stdLandmark);
+		}
+	}
+	return 0.0; //Should not come here?
+}
+
+LandmarkObs mapToWorldCoordinates(LandmarkObs &obs, Particle &particle) {
+	auto mapped = LandmarkObs();
+	mapped.x = particle.x + (obs.x * cos(particle.theta) - obs.y * sin(particle.theta));
+	mapped.y = particle.y + (obs.x * sin(particle.theta) +  obs.y * cos(particle.theta));
+	mapped.id = obs.id;
+	return mapped;
+}
+
+std::vector<LandmarkObs>
+mapObservationsToWorldCoordinates(std::vector<LandmarkObs> observations,
+																	Particle particle) {
+	auto mapped = std::vector<LandmarkObs>();
+	for(int index = 0; index < observations.size(); index ++) {
+		mapped.push_back(mapToWorldCoordinates(observations[index], particle));
+	}
+
+	return mapped;
+}
+
+/*
+std::vector<LandmarkObs, std::allocator<LandmarkObs>>
+ParticleFilter::landmarksInRange(Particle particle, double range, Map map) {
+	auto inRange =  vector<LandmarkObs, allocator<LandmarkObs>>();
+	for(int index = 0; index < map.landmark_list.size(); index ++) {
+		auto landmark = map.landmark_list[index];
+		if(dist(particle.x, particle.y, landmark.x_f, landmark.y_f) <= range || true) {
+			LandmarkObs landmarkInRange;
+			landmarkInRange.x = landmark.x_f;
+			landmarkInRange.y = landmark.y_f;
+			landmarkInRange.id = landmark.id_i;
+			inRange.push_back(landmarkInRange);
+		}
+	}
+	return inRange;
+}
+*/
+std::vector<LandmarkObs, std::allocator<LandmarkObs>>
+predictObservations(Map map, Particle &particle, unsigned long size) {
+
+
+	auto predicted = vector<LandmarkObs, allocator<LandmarkObs>>() ;
+	for(int index = 0; index < map.landmark_list.size(); index++) {
+		LandmarkObs landmarkObs = LandmarkObs();
+		landmarkObs.x = map.landmark_list[index].x_f;
+		landmarkObs.y = map.landmark_list[index].y_f;
+		landmarkObs.id = map.landmark_list[index].id_i;
+		predicted.push_back(landmarkObs);
+	}
+
+	sort( predicted.begin( ), predicted.end( ), [ particle]( const LandmarkObs& landmarkObs1, const LandmarkObs& landmarkObs2 )
+	{
+			return (dist(particle.x, particle.y, landmarkObs1.x, landmarkObs1.y) < dist(particle.x, particle.y, landmarkObs2.x, landmarkObs2.y));
+	});
+
+	predicted.resize(size);
+	return predicted;
+
+}
+
 void ParticleFilter::init(double x, double y, double theta, double std[]) {
 	// TODO: Set the number of particles. Initialize all particles to first position (based on estimates of 
 	//   x, y, theta and their uncertainties from GPS) and all weights to 1. 
@@ -62,8 +141,6 @@ void ParticleFilter::prediction(double delta_t, double std_pos[], double velocit
 	//  http://en.cppreference.com/w/cpp/numeric/random/normal_distribution
 	//  http://www.cplusplus.com/reference/random/default_random_engine/
 
-	this->predictionCount++;
-	cout << "Prediction: " << predictionCount << endl;
 	normal_distribution<double> dist_x(0, std_pos[0]);
 	normal_distribution<double> dist_y(0, std_pos[1]);
 	normal_distribution<double> dist_theta(0, std_pos[2]);
@@ -219,80 +296,3 @@ string ParticleFilter::getSenseY(Particle best)
     return s;
 }
 
-double ParticleFilter::measurementProbability(LandmarkObs observation, Map map, double stdLandmark[]) {
-
-	double max_probability = 0.0;
-	for(int mapLandmarkIndex = 0; mapLandmarkIndex < map.landmark_list.size(); mapLandmarkIndex++) {
-		auto landMark = map.landmark_list[mapLandmarkIndex];
-		if (landMark.id_i == observation.id) {
-			auto probability = gaussian(observation, landMark, stdLandmark);
-			return gaussian(observation, landMark, stdLandmark);
-		}
-	}
-	return 0.0; //Should not come here?
-}
-
-double
-ParticleFilter::gaussian(LandmarkObs observation, Map::single_landmark_s landmark, double std_dev[]) {
-	double exponent1 = pow(observation.x-landmark.x_f, 2) / (2*std_dev[0]*std_dev[0]);
-	double exponent2 = pow(observation.y-landmark.y_f, 2) / (2*std_dev[1]*std_dev[1]);
-	return exp(-(exponent1 + exponent2)) / (2 * M_PI * std_dev[0] * std_dev[1]);
-}
-
-LandmarkObs ParticleFilter::mapToWorldCoordinates(LandmarkObs &obs, Particle &particle) {
-	auto mapped = LandmarkObs();
-	mapped.x = particle.x + (obs.x * cos(particle.theta) - obs.y * sin(particle.theta));
-	mapped.y = particle.y + (obs.x * sin(particle.theta) +  obs.y * cos(particle.theta));
-	mapped.id = obs.id;
-	return mapped;
-}
-
-std::vector<LandmarkObs>
-ParticleFilter::mapObservationsToWorldCoordinates(std::vector<LandmarkObs> observations,
-																									Particle particle) {
-	auto mapped = std::vector<LandmarkObs>();
-	for(int index = 0; index < observations.size(); index ++) {
-		mapped.push_back(mapToWorldCoordinates(observations[index], particle));
-	}
-
-	return mapped;
-}
-
-std::vector<LandmarkObs, std::allocator<LandmarkObs>>
-ParticleFilter::landmarksInRange(Particle particle, double range, Map map) {
-	auto inRange =  vector<LandmarkObs, allocator<LandmarkObs>>();
-	for(int index = 0; index < map.landmark_list.size(); index ++) {
-		auto landmark = map.landmark_list[index];
-		if(dist(particle.x, particle.y, landmark.x_f, landmark.y_f) <= range || true) {
-			LandmarkObs landmarkInRange;
-			landmarkInRange.x = landmark.x_f;
-			landmarkInRange.y = landmark.y_f;
-			landmarkInRange.id = landmark.id_i;
-			inRange.push_back(landmarkInRange);
-		}
-	}
-	return inRange;
-}
-
-std::vector<LandmarkObs, std::allocator<LandmarkObs>>
-ParticleFilter::predictObservations(Map map, Particle &particle, unsigned long size) {
-
-
-	auto predicted = vector<LandmarkObs, allocator<LandmarkObs>>() ;
-	for(int index = 0; index < map.landmark_list.size(); index++) {
-		LandmarkObs landmarkObs = LandmarkObs();
-		landmarkObs.x = map.landmark_list[index].x_f;
-		landmarkObs.y = map.landmark_list[index].y_f;
-		landmarkObs.id = map.landmark_list[index].id_i;
-		predicted.push_back(landmarkObs);
-	}
-
-	sort( predicted.begin( ), predicted.end( ), [ particle]( const LandmarkObs& landmarkObs1, const LandmarkObs& landmarkObs2 )
-	{
-			return (dist(particle.x, particle.y, landmarkObs1.x, landmarkObs1.y) < dist(particle.x, particle.y, landmarkObs2.x, landmarkObs2.y));
-	});
-
-	predicted.resize(size);
-	return predicted;
-
-}
